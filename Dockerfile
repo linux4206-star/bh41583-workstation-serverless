@@ -9,11 +9,18 @@ WORKDIR /app
 RUN git clone https://github.com/lllyasviel/stable-diffusion-webui-forge.git reforge
 
 
-# 3. 【极致抗造版】增加 Git 缓冲区并单行运行，防止大文件导致连接中断
+# 3. 【终极稳定版】使用 wget 直接下载压缩包，彻底告别 Git Clone 128 错误
 WORKDIR /app/reforge/repositories
-RUN git config --global http.postBuffer 524288000 && \
-    git clone --depth 1 https://github.com/stability-ai/stablediffusion.git stable-diffusion-stability-ai || \
-    (sleep 5 && git clone --depth 1 https://github.com/stability-ai/stablediffusion.git stable-diffusion-stability-ai)
+RUN git clone --depth 1 https://github.com/salesforce/BLIP.git BLIP
+RUN git clone --depth 1 https://github.com/sczhou/CodeFormer.git CodeFormer
+RUN git clone --depth 1 https://github.com/CompVis/taming-transformers.git taming-transformers
+RUN git clone --depth 1 https://github.com/openai/CLIP.git CLIP
+
+# 针对这个死活连不上的仓库，用 wget 下载
+RUN wget https://github.com/stability-ai/stablediffusion/archive/refs/heads/main.zip -O sd.zip && \
+    unzip sd.zip && \
+    mv stablediffusion-main stable-diffusion-stability-ai && \
+    rm sd.zip
 
 # 4. 回到工作目录安装 Python 依赖
 WORKDIR /app
