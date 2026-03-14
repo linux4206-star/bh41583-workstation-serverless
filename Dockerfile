@@ -15,22 +15,9 @@ RUN apt-get update && apt-get install -y libgl1-mesa-glx curl git wget unzip
 # 1. 环境准备 (补全所有可能用到的工具)
 RUN apt-get update && apt-get install -y libgl1-mesa-glx curl git wget unzip
 
-# 3. 【绝对通关版】采用“先尝试克隆，失败则暴力下载”的双重逻辑
+# 3. 物理搬运：直接将本地已有的仓库文件复制进镜像
 WORKDIR /app/reforge/repositories
-
-# 针对 stability-ai，我们先设置 Git 缓冲区，如果克隆失败，再尝试用 curl 强拉
-RUN (git config --global http.postBuffer 1048576000 && \
-    git clone --depth 1 https://github.com/Stability-AI/stablediffusion.git stable-diffusion-stability-ai) || \
-    (curl -fL https://github.com/Stability-AI/stablediffusion/archive/refs/heads/main.zip -o sd.zip && \
-    unzip sd.zip && \
-    mv stablediffusion-main stable-diffusion-stability-ai && \
-    rm sd.zip)
-
-# 其他轻量级仓库继续执行
-RUN git clone --depth 1 https://github.com/salesforce/BLIP.git BLIP
-RUN git clone --depth 1 https://github.com/sczhou/CodeFormer.git CodeFormer
-RUN git clone --depth 1 https://github.com/CompVis/taming-transformers.git taming-transformers
-RUN git clone --depth 1 https://github.com/openai/CLIP.git CLIP
+COPY ./repositories /app/reforge/repositories
 
 # 4. 回到工作目录安装 Python 依赖
 WORKDIR /app
