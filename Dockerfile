@@ -19,12 +19,25 @@ RUN apt-get update && apt-get install -y libgl1-mesa-glx curl git wget unzip
 WORKDIR /app/reforge/repositories
 COPY ./repositories /app/reforge/repositories
 
-# 4. 回到工作目录安装 Python 依赖
+# 1. 环境准备：安装 Forge 运行必须的系统级图形库
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libsm6 \
+    libxrender1 \
+    libxext6 \
+    ffmpeg \
+    unzip \
+    && rm -rf /var/lib/apt/lists/*
+
+# 4. 回到工作目录安装依赖
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-# 额外安装 Forge 自己的依赖
-RUN pip install --no-cache-dir -r reforge/requirements.txt
+
+# 优先安装你自定义的依赖，开启镜像源加速 (针对国内构建环境建议加，RunPod 节点可选)
+RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
+
+# 额外安装 Forge 核心依赖，使用 --prefer-binary 避免耗时的现场编译
+# 增加 --ignore-installed 确保不会因为与基础镜像冲突而报错
+RUN pip install --no-cache-dir --prefer-binary --ignore-installed -r reforge/requirements.txt
 
 # 5. 复制你的 handler 和 启动脚本
 COPY . .
