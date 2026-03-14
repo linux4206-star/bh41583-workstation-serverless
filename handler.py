@@ -1,38 +1,72 @@
 import runpod
+import sqlite3
 import requests
 import time
 import os
-import base64
 
-# --- 核心逻辑：当有人点“生成”时，RunPod 会调用这个函数 ---
+# 1. 核心持久化路径：必须放在挂载的云硬盘上，关机也不丢数据
+DB_PATH = "/workspace/workstation.db"
+
+def init_db():
+    """初始化云端数据库：如果硬盘里没有账本，就新建一个"""
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    # 用户表：账号、密码（建议以后加密）、权限等级
+    cursor.execute('''CREATE TABLE IF NOT EXISTS users 
+                      (username TEXT PRIMARY KEY, password TEXT, level INTEGER)''')
+    # 日志表：记录谁在什么时候生了什么图
+    cursor.execute('''CREATE TABLE IF NOT EXISTS logs 
+                      (id INTEGER PRIMARY KEY AUTOINCREMENT, user TEXT, action TEXT, time TIMESTAMP DEFAULT CURRENT_TIMESTAMP)''')
+    # 注入管理员账号 (BH41583)
+    cursor.execute("INSERT OR IGNORE INTO users VALUES ('BH41583', 'admin123', 99)")
+    conn.commit()
+    conn.close()
+
 def handler(job):
-    # 1. 获取输入参数 (从你的 Streamlit 传过来)
-    job_input = job['input']
-    prompt = job_input.get("prompt")
-    # ... 其他你 main.py 里的参数
+    """云端大脑主循环：接收并执行指令"""
+    input_data = job['input']
+    action = input_data.get("action") # 动作类型：login, register, generate
+    data = input_data.get("data")     # 携带的具体参数
     
-    # 2. 这里的逻辑相当于你原来的 draw 接口
-    # 我们直接调用容器内即将启动的 WebUI (127.0.0.1:7860)
-    sd_payload = {
-        "prompt": f"Realism_Illustrious_Positive_Embedding, {prompt}",
-        "steps": job_input.get("steps", 25),
-        "width": job_input.get("width", 1024),
-        "height": job_input.get("height", 1024),
-        "sampler_name": job_input.get("sampler", "DPM++ 2M Karras"),
-        # 加上你引以为傲的 ADetailer 自动修脸
-        "alwayson_scripts": {"ADetailer": {"args": [{"ad_model": "face_yolov8n.pt"}]}}
-    }
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
 
     try:
-        # 等待 WebUI 就绪
-        response = requests.post("http://127.0.0.1:7860/sdapi/v1/txt2img", json=sd_payload, timeout=300)
-        
-        if response.status_code == 200:
-            return response.json() # 将图片 B64 返回给前端
-        else:
-            return {"error": f"WebUI Error: {response.text}"}
-    except Exception as e:
-        return {"error": str(e)}
+        # --- 逻辑 A：新成员注册 ---
+        if action == "register":
+            if data.get("invite") != "admin123": # 校验你的邀请码
+                return {"success": False, "error": "邀请码无效"}
+            cursor.execute("INSERT INTO users VALUES (?, ?, 1)", (data['username'], data['password']))
+            conn.commit()
+            return {"success": True, "message": "欢迎加入云端算力中心"}
 
-# 启动 Serverless 引擎
+        # --- 逻辑 B：用户登录 ---
+        elif action == "login":
+            cursor.execute("SELECT level FROM users WHERE username=? AND password=?", (data['username'], data['password']))
+            user = cursor.fetchone()
+            if user:
+                return {"success": True, "level": user[0], "token": "CLOUD_TOKEN_41583"}
+            return {"success": False, "error": "身份核验失败"}
+
+        # --- 逻辑 C：4090 暴力生图 ---
+        elif action == "generate":
+            # 这里的 7860 是你在 Docker 内部启动的 Forge 端口
+            # 此时 4090 的所有显存都为你所用
+            sd_url = "http://127.0.0.1:7860/sdapi/v1/txt2img"
+            response = requests.post(sd_url, json=data, timeout=300)
+            
+            # 顺便记个日志，你是管理员，能随时查谁在用你的算力
+            cursor.execute("INSERT INTO logs (user, action) VALUES (?, ?)", 
+                           (input_data.get("username", "Guest"), f"Draw: {data.get('prompt')[:20]}..."))
+            conn.commit()
+            return response.json()
+
+    except Exception as e:
+        return {"success": False, "error": f"大脑运行异常: {str(e)}"}
+    finally:
+        conn.close()
+
+# 启动前确保持久化数据库已就绪
+init_db()
 runpod.serverless.start({"handler": handler})
