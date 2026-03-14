@@ -11,10 +11,10 @@ RUN git clone https://github.com/lllyasviel/stable-diffusion-webui-forge.git ref
 # 3. 【超级加速+抗抖动版】只拉取最新层，减少下载量
 WORKDIR /app/reforge/repositories
 RUN git clone --depth 1 https://github.com/salesforce/BLIP.git BLIP && \
-    git clone --depth 1 https://github.com/sczhou/CodeFormer.git CodeFormer && \
-    git clone --depth 1 https://github.com/CompVis/taming-transformers.git taming-transformers && \
-    git clone --depth 1 https://github.com/openai/CLIP.git CLIP && \
-    git clone --depth 1 https://github.com/stability-ai/stablediffusion.git stable-diffusion-stability-ai
+RUN git clone --depth 1 https://github.com/sczhou/CodeFormer.git CodeFormer && \
+RUN git clone --depth 1 https://github.com/CompVis/taming-transformers.git taming-transformers && \
+RUN git clone --depth 1 https://github.com/openai/CLIP.git CLIP && \
+RUN git clone --depth 1 https://github.com/stability-ai/stablediffusion.git stable-diffusion-stability-ai
 
 # 4. 回到工作目录安装 Python 依赖
 WORKDIR /app
