@@ -9,18 +9,22 @@ WORKDIR /app
 RUN git clone https://github.com/lllyasviel/stable-diffusion-webui-forge.git reforge
 
 
-# 3. 【终极稳定版】使用 wget 直接下载压缩包，彻底告别 Git Clone 128 错误
+# 1. 确保安装了 unzip 和 curl
+RUN apt-get update && apt-get install -y libgl1-mesa-glx curl git wget unzip
+
+# 3. 【绝对通关版】改用 curl -L (自动跟随重定向) 下载压缩包
 WORKDIR /app/reforge/repositories
+
+RUN curl -L https://github.com/Stability-AI/stablediffusion/archive/refs/heads/main.zip -o sd.zip && \
+    unzip sd.zip && \
+    mv stablediffusion-main stable-diffusion-stability-ai && \
+    rm sd.zip
+
+# 其余仓库继续使用 git clone (depth 1 减小体积)
 RUN git clone --depth 1 https://github.com/salesforce/BLIP.git BLIP
 RUN git clone --depth 1 https://github.com/sczhou/CodeFormer.git CodeFormer
 RUN git clone --depth 1 https://github.com/CompVis/taming-transformers.git taming-transformers
 RUN git clone --depth 1 https://github.com/openai/CLIP.git CLIP
-
-# 针对这个死活连不上的仓库，用 wget 下载
-RUN wget https://github.com/stability-ai/stablediffusion/archive/refs/heads/main.zip -O sd.zip && \
-    unzip sd.zip && \
-    mv stablediffusion-main stable-diffusion-stability-ai && \
-    rm sd.zip
 
 # 4. 回到工作目录安装 Python 依赖
 WORKDIR /app
