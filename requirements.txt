@@ -1,0 +1,7 @@
+runpod
+requests
+Pillow
+fastapi
+sqlalchemy
+bcrypt
+python-jose[cryptography]
