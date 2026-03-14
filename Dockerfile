@@ -8,10 +8,6 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# 2. 预下载 Forge 引擎
-RUN git clone https://github.com/lllyasviel/stable-diffusion-webui-forge.git reforge
-
-# 3. 【关键修正】物理搬运核心组件
 # 这一步会把本地 Backend/repositories 下的所有东西拷进 Forge 的对应目录
 COPY ./repositories /app/reforge/repositories
 
