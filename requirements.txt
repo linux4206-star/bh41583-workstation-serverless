@@ -5,3 +5,5 @@ fastapi
 sqlalchemy
 bcrypt
 python-jose[cryptography]
+# 核心修正：强行锁定 numpy 版本，防止它偷偷升级到 2.0
+numpy==1.26.4
